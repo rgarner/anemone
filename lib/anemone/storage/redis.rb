@@ -3,13 +3,15 @@ require 'redis'
 module Anemone
   module Storage
     class Redis
-
+      REDIS_DB_INDEX = 12
       MARSHAL_FIELDS = %w(links visited fetched)
 
       def initialize(opts = {})
         @redis = ::Redis.new(opts)
         @key_prefix = opts[:key_prefix] || 'anemone'
-        keys.each { |key| delete(key) }
+        @db_index = opts[:db_index] || REDIS_DB_INDEX
+        @redis.select @db_index
+        @redis.flushdb
       end
 
       def [](key)

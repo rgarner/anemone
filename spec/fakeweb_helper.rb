@@ -22,6 +22,7 @@ module Anemone
       @redirect = options[:redirect] if options.has_key?(:redirect)
       @content_type = options[:content_type] || "text/html"
       @body = options[:body]
+      @canonical_url = options[:canonical_url]
 
       create_body unless @body
       add_to_fakeweb
@@ -34,7 +35,9 @@ module Anemone
     private
 
     def create_body
-      @body = "<html><body>"
+      @body = "<html>"
+      @body += "<head><link rel=\"canonical\" href=\"#{@canonical_url}\" /></head>" if @canonical_url
+      @body += "<body>"
       @links.each{|l| @body += "<a href=\"#{SPEC_DOMAIN}#{l}\"></a>"} if @links
       @hrefs.each{|h| @body += "<a href=\"#{h}\"></a>"} if @hrefs
       @body += "</body></html>"
@@ -56,7 +59,7 @@ module Anemone
                                                   :status => [200, "OK"]})
       end
 
-      FakeWeb.register_uri(:get, SPEC_DOMAIN + @name, options)
+      FakeWeb.register_uri(:get, self.url, options)
     end
   end
 end

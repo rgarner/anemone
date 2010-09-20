@@ -1,6 +1,10 @@
 require 'anemone/http'
 
 module Anemone
+  #
+  # A Tentacle runs on its own thread and is a +Page+ producer to
+  # +core.run+'s consumer
+  #
   class Tentacle
 
     #

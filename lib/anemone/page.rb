@@ -47,8 +47,24 @@ module Anemone
       @response_time = params[:response_time]
       @body = params[:body]
       @error = params[:error]
+      @canonical_url = nil
 
       @fetched = !params[:code].nil?
+    end
+
+    # The canonical URL of the page, if available, or the URL if not
+    def key
+      self.canonical_url || @url
+    end
+
+    # The canonical URL of the page, if requested for the crawl and available
+    def canonical_url
+      if doc
+        canonical_nodes = doc.search('//link[@rel="canonical"]/@href')
+        @canonical_url = URI.parse(canonical_nodes.first.content) rescue nil
+      end
+
+      @canonical_url
     end
 
     #
@@ -77,11 +93,17 @@ module Anemone
       @doc = Nokogiri::HTML(@body) if @body && html? rescue nil
     end
 
+    def populate_fields_from_doc
+      links
+      canonical_url
+      nil
+    end
+
     #
     # Delete the Nokogiri document and response body to conserve memory
     #
     def discard_doc!
-      links # force parsing of page links before we trash the document
+      populate_fields_from_doc # force parsing of things we need before we trash the document
       @doc = @body = nil
     end
 
@@ -167,6 +189,7 @@ module Anemone
 
     def to_hash
       {'url' => @url.to_s,
+       'canonical_url' => @canonical_url,
        'headers' => Marshal.dump(@headers),
        'data' => Marshal.dump(@data),
        'body' => @body,
@@ -181,9 +204,12 @@ module Anemone
     end
 
     def self.from_hash(hash)
-      page = self.new(URI(hash['url']))
+      url = hash['url']
+      puts "hash['url'] == #{url.nil? ? 'nil' : url}"
+      page = self.new(url.nil? ? nil : URI(url))
       {'@headers' => Marshal.load(hash['headers']),
        '@data' => Marshal.load(hash['data']),
+       '@canonical_url' => url,
        '@body' => hash['body'],
        '@links' => hash['links'].map { |link| URI(link) },
        '@code' => hash['code'].to_i,

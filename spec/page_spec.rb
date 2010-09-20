@@ -88,5 +88,24 @@ module Anemone
       converted.depth.should == page.depth
     end
 
+    describe "A page with a canonical URL" do
+      EXAMPLE_CANONICAL_URL = 'http://canonical.example.com/'
+
+      before :each do
+        @http = Anemone::HTTP.new
+        @page = @http.fetch_page(FakePage.new('home', :canonical_url => EXAMPLE_CANONICAL_URL).url)
+      end
+
+      it "should have stored the canonical URL as the main key" do
+        @page.key.to_s.should == EXAMPLE_CANONICAL_URL
+      end
+      it "should have stored the canonical URL as-is" do
+        @page.canonical_url.to_s.should == EXAMPLE_CANONICAL_URL
+      end
+      it "should be a URI" do
+        @page.canonical_url.should be_a URI
+      end
+    end
+
   end
 end

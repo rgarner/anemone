@@ -17,6 +17,7 @@ module Anemone
     end
 
     def []=(index, other)
+      raise ArgumentError, "Cannot store an item with a nil key" if index.nil?
       @storage[index.to_s] = other
     end
 

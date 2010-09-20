@@ -115,6 +115,47 @@ module Anemone
         count.should == 3
       end
 
+      describe "Canonical URLs" do
+        EXAMPLE_CANONICAL = 'http://www.example.com/canonical/0'
+
+        before do
+          # In this example both http://example.com/0 and http://example.com/0.1 have the same
+          # canonical URL http://www.example.com/canonical/0
+          @pages = []
+          @root_page = FakePage.new('0', :links => ['0.1'], :canonical_url => EXAMPLE_CANONICAL)
+          @pages << @root_page
+          @pages << FakePage.new('0.1', :canonical_url => EXAMPLE_CANONICAL)
+        end
+
+        describe "When turned on" do
+          before do
+            @core = Anemone.crawl(@pages[0].url, @opts.merge(:use_canonical_urls => true))
+          end
+
+          it "should have stored one page only" do
+            @core.should have(1).pages
+          end
+
+          it "should have stored the first page's content under the canonical url" do
+            @core.pages[EXAMPLE_CANONICAL].url.to_s.should == @root_page.url
+          end
+        end
+
+        describe "When turned off" do
+          before do
+            @core = Anemone.crawl(@pages[0].url, @opts.merge(:use_canonical_urls => false))
+          end
+
+          it "should have stored two pages" do
+            @core.should have(2).pages
+          end
+
+          it "should have been keyed by non-canonical URL" do
+            @core.pages[@root_page.url].should_not be_nil
+          end
+        end
+      end
+
       it "should not discard page bodies by default" do
         Anemone.crawl(FakePage.new('0').url, @opts).pages.values.first.doc.should_not be_nil
       end
@@ -283,7 +324,8 @@ module Anemone
                              :discard_page_bodies => true,
                              :user_agent => 'test',
                              :obey_robots_txt => true,
-                             :depth_limit => 3)
+                             :depth_limit => 3,
+                             :use_canonical_urls => true)
 
         core.opts[:verbose].should == false
         core.opts[:threads].should == 2
@@ -292,6 +334,7 @@ module Anemone
         core.opts[:user_agent].should == 'test'
         core.opts[:obey_robots_txt].should == true
         core.opts[:depth_limit].should == 3
+        core.opts[:use_canonical_urls].should == true
       end
 
       it "should accept options via setter methods in the crawl block" do
@@ -302,6 +345,7 @@ module Anemone
           a.user_agent = 'test'
           a.obey_robots_txt = true
           a.depth_limit = 3
+          a.use_canonical_urls = true
         end
 
         core.opts[:verbose].should == false
@@ -311,6 +355,7 @@ module Anemone
         core.opts[:user_agent].should == 'test'
         core.opts[:obey_robots_txt].should == true
         core.opts[:depth_limit].should == 3
+        core.opts[:use_canonical_urls].should == true
       end
 
       it "should use 1 thread if a delay is requested" do

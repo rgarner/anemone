@@ -26,30 +26,32 @@ module Anemone
     attr_reader :opts
 
     DEFAULT_OPTS = {
-      # run 4 Tentacle threads to fetch pages
-      :threads => 4,
-      # disable verbose output
-      :verbose => false,
-      # don't throw away the page response body after scanning it for links
-      :discard_page_bodies => false,
-      # identify self as Anemone/VERSION
-      :user_agent => "Anemone/#{Anemone::VERSION}",
-      # no delay between requests
-      :delay => 0,
-      # don't obey the robots exclusion protocol
-      :obey_robots_txt => false,
-      # by default, don't limit the depth of the crawl
-      :depth_limit => false,
-      # number of times HTTP redirects will be followed
-      :redirect_limit => 5,
-      # storage engine defaults to Hash in +process_options+ if none specified
-      :storage => nil,
-      # Hash of cookie name => value to send with HTTP requests
-      :cookies => nil,
-      # accept cookies from the server and send them back?
-      :accept_cookies => false,
-      # skip any link with a query string? e.g. http://foo.com/?u=user
-      :skip_query_strings => false
+            # run 4 Tentacle threads to fetch pages
+            :threads => 4,
+            # disable verbose output
+            :verbose => false,
+            # don't throw away the page response body after scanning it for links
+            :discard_page_bodies => false,
+            # identify self as Anemone/VERSION
+            :user_agent => "Anemone/#{Anemone::VERSION}",
+            # no delay between requests
+            :delay => 0,
+            # don't obey the robots exclusion protocol
+            :obey_robots_txt => false,
+            # by default, don't limit the depth of the crawl
+            :depth_limit => false,
+            # number of times HTTP redirects will be followed
+            :redirect_limit => 5,
+            # storage engine defaults to Hash in +process_options+ if none specified
+            :storage => nil,
+            # Hash of cookie name => value to send with HTTP requests
+            :cookies => nil,
+            # accept cookies from the server and send them back?
+            :accept_cookies => false,
+            # skip any link with a query string? e.g. http://foo.com/?u=user
+            :skip_query_strings => false,
+            # respect canonical url from the header
+            :use_canonical_urls => false
     }
 
     # Create setter methods for all options to be called from the crawl block
@@ -64,12 +66,12 @@ module Anemone
     # and optional *block*
     #
     def initialize(urls, opts = {})
-      @urls = [urls].flatten.map{ |url| url.is_a?(URI) ? url : URI(url) }
-      @urls.each{ |url| url.path = '/' if url.path.empty? }
+      @urls = [urls].flatten.map { |url| url.is_a?(URI) ? url : URI(url) }
+      @urls.each { |url| url.path = '/' if url.path.empty? }
 
       @tentacles = []
       @on_every_page_blocks = []
-      @on_pages_like_blocks = Hash.new { |hash,key| hash[key] = [] }
+      @on_pages_like_blocks = Hash.new { |hash, key| hash[key] = [] }
       @skip_link_patterns = []
       @after_crawl_blocks = []
       @opts = opts
@@ -142,7 +144,7 @@ module Anemone
     def run
       process_options
 
-      @urls.delete_if { |url| !visit_link?(url) }
+      @urls.delete_if { |url| !should_visit_link?(url) }
       return if @urls.empty?
 
       link_queue = Queue.new
@@ -152,22 +154,27 @@ module Anemone
         @tentacles << Thread.new { Tentacle.new(link_queue, page_queue, @opts).run }
       end
 
-      @urls.each{ |url| link_queue.enq(url) }
+      @urls.each { |url| link_queue.enq(url) }
 
       loop do
         page = page_queue.deq
-        @pages.touch_key page.url
-        puts "#{page.url} Queue: #{link_queue.size}" if @opts[:verbose]
-        do_page_blocks page
+        key = @opts[:use_canonical_urls] ? page.key : page.url
 
-        links = links_to_follow page
-        page.discard_doc! if @opts[:discard_page_bodies]
-        links.each do |link|
-          link_queue << [link, page.url.dup, page.depth + 1]
+        already_seen = @pages.has_page? key
+
+        puts "#{ already_seen ? '*' : ''} #{page.url} Queue: #{link_queue.size}" if @opts[:verbose]
+
+        unless @opts[:use_canonical_urls] && already_seen
+          do_page_blocks page
+
+          links = links_to_follow page
+          page.discard_doc! if @opts[:discard_page_bodies]
+          links.each do |link|
+            link_queue << [link, page.url.dup, page.depth + 1]
+          end
+
+          @pages[key] = page
         end
-        @pages.touch_keys links
-
-        @pages[page.url] = page
 
         # if we are done with the crawl, tell the threads to end
         if link_queue.empty? and page_queue.empty?
@@ -235,7 +242,7 @@ module Anemone
     #
     def links_to_follow(page)
       links = @focus_crawl_block ? @focus_crawl_block.call(page) : page.links
-      links.select { |link| visit_link?(link, page) }.map { |link| link.dup }
+      links.select { |link| should_visit_link?(link, page) }.map { |link| link.dup }
     end
 
     #
@@ -245,12 +252,13 @@ module Anemone
     # and is not deeper than the depth limit
     # Returns +false+ otherwise.
     #
-    def visit_link?(link, from_page = nil)
+    def should_visit_link?(link, from_page = nil)
+      puts "Deciding whether to visit #{link.to_s}, @pages has it? #{@pages.has_page?(link)}"
       !@pages.has_page?(link) &&
-      !skip_link?(link) &&
-      !skip_query_string?(link) &&
-      allowed(link) &&
-      !too_deep?(from_page)
+              !skip_link?(link) &&
+              !skip_query_string?(link) &&
+              allowed(link) &&
+              !too_deep?(from_page)
     end
 
     #
@@ -273,7 +281,7 @@ module Anemone
         false
       end
     end
-    
+
     #
     # Returns +true+ if *link* should not be visited because
     # it has a query string and +skip_query_strings+ is true.
