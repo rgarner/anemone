@@ -49,7 +49,9 @@ module Anemone
       # accept cookies from the server and send them back?
       :accept_cookies => false,
       # skip any link with a query string? e.g. http://foo.com/?u=user
-      :skip_query_strings => false
+      :skip_query_strings => false,
+      # Collection of domains to treat as synonyms for the primary domain
+      :domain_synonyms => []
     }
 
     # Create setter methods for all options to be called from the crawl block
@@ -194,8 +196,14 @@ module Anemone
       storage = Anemone::Storage::Base.new(@opts[:storage] || Anemone::Storage.Hash)
       @pages = PageStore.new(storage)
       @robots = Robots.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
+      @opts[:domain_synonyms] = ensure_array_of_uris(@opts[:domain_synonyms])
 
       freeze_options
+    end
+
+    def ensure_array_of_uris(uris)
+      uris = uris.to_a
+      uris.each_with_index { |u, i| uris[i] = URI(u) unless u.is_a? URI}
     end
 
     #

@@ -39,7 +39,8 @@ module Anemone
                                       :referer => referer,
                                       :depth => depth,
                                       :redirect_to => redirect_to,
-                                      :response_time => response_time)
+                                      :response_time => response_time,
+                                      :domain_synonyms => @opts[:domain_synonyms])
         end
 
         return pages

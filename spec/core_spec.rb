@@ -6,6 +6,7 @@ module Anemone
 
     before(:each) do
       FakeWeb.clean_registry
+      @opts = {}
     end
 
     shared_examples_for "crawl" do
@@ -30,6 +31,17 @@ module Anemone
         core.pages.keys.should_not include('http://www.other.com/')
       end
 
+      it "should follow links that leave the original domain when domain synonyms are defined" do
+        pages = []
+        pages << FakePage.new('0', :links => {'1' => 'http://other.example.com'})
+        pages << FakePage.new('1', :domain => 'http://other.example.com')
+
+        core = Anemone.crawl(pages[0].url, @opts.merge({:domain_synonyms => ['http://other.example.com']}))
+
+        # core.should have(2).pages
+        core.pages.keys.should include('http://other.example.com/1')
+      end
+
       it "should not follow redirects that leave the original domain" do
         pages = []
         pages << FakePage.new('0', :links => ['1'], :redirect => 'http://www.other.com/')
@@ -39,6 +51,17 @@ module Anemone
 
         core.should have(2).pages
         core.pages.keys.should_not include('http://www.other.com/')
+      end
+
+      it "should follow redirects that leave the original domain when domain synonyms are defined" do
+        pages = []
+        pages << FakePage.new('0', :links => {'1' => 'http://other.example.com'}, :redirect => 'http://other.example.com/')
+        pages << FakePage.new('1')
+
+        core = Anemone.crawl(pages[0].url, @opts.merge(:domain_synonyms => ['http://other.example.com']))
+
+        core.should have(2).pages
+        core.pages.keys.should include('http://other.example.com/1')
       end
 
       it "should follow http redirects" do

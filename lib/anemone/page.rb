@@ -47,6 +47,9 @@ module Anemone
       @response_time = params[:response_time]
       @body = params[:body]
       @error = params[:error]
+      # Domain synonyms must be an array of URI - core does this for us if necessary,
+      # but we don't sanity check Page instances
+      @domain_synonyms = params[:domain_synonyms] || []
 
       @fetched = !params[:code].nil?
     end
@@ -139,7 +142,7 @@ module Anemone
       return nil if link.nil?
 
       # remove anchor
-      link = URI.encode(link.to_s.gsub(/#[a-zA-Z0-9_-]*$/,''))
+      link = URI.encode(link.to_s.gsub(/#[a-zA-Z0-9_-]*$/, ''))
 
       relative = URI(link)
       absolute = @url.merge(relative)
@@ -154,7 +157,8 @@ module Anemone
     # +false+ otherwise
     #
     def in_domain?(uri)
-      uri.host == @url.host
+      (uri.host == @url.host) ||
+              @domain_synonyms.any? { |synonym| uri.host == synonym.host }
     end
 
     def marshal_dump
@@ -170,7 +174,7 @@ module Anemone
        'headers' => Marshal.dump(@headers),
        'data' => Marshal.dump(@data),
        'body' => @body,
-       'links' => links.map(&:to_s), 
+       'links' => links.map(&:to_s),
        'code' => @code,
        'visited' => @visited,
        'depth' => @depth,
