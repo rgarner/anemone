@@ -124,6 +124,16 @@ module Anemone
         core.pages.values.first.doc.should be_nil
       end
 
+      it "should discard these pages *after* focus_crawl is called (http://github.com/chriskite/anemone/issues#issue/5)" do
+        Anemone.crawl(FakePage.new('0', :hrefs => 'http://somewhere.else/').url,
+                      @opts.merge({:discard_page_bodies => true})) do |a|
+          a.focus_crawl do |p|
+            p.doc.should_not be_nil
+            [] #return an enumerable for focus_crawl to chew
+          end
+        end
+      end
+
       it "should provide a focus_crawl method to select the links on each page to follow" do
         pages = []
         pages << FakePage.new('0', :links => ['1', '2'])
