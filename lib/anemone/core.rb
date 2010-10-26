@@ -26,32 +26,34 @@ module Anemone
     attr_reader :opts
 
     DEFAULT_OPTS = {
-            # run 4 Tentacle threads to fetch pages
-            :threads => 4,
-            # disable verbose output
-            :verbose => false,
-            # don't throw away the page response body after scanning it for links
-            :discard_page_bodies => false,
-            # identify self as Anemone/VERSION
-            :user_agent => "Anemone/#{Anemone::VERSION}",
-            # no delay between requests
-            :delay => 0,
-            # don't obey the robots exclusion protocol
-            :obey_robots_txt => false,
-            # by default, don't limit the depth of the crawl
-            :depth_limit => false,
-            # number of times HTTP redirects will be followed
-            :redirect_limit => 5,
-            # storage engine defaults to Hash in +process_options+ if none specified
-            :storage => nil,
-            # Hash of cookie name => value to send with HTTP requests
-            :cookies => nil,
-            # accept cookies from the server and send them back?
-            :accept_cookies => false,
-            # skip any link with a query string? e.g. http://foo.com/?u=user
-            :skip_query_strings => false,
-            # respect canonical url from the header
-            :use_canonical_urls => false
+        # run 4 Tentacle threads to fetch pages
+        :threads => 4,
+        # disable verbose output
+        :verbose => false,
+        # don't throw away the page response body after scanning it for links
+        :discard_page_bodies => false,
+        # identify self as Anemone/VERSION
+        :user_agent => "Anemone/#{Anemone::VERSION}",
+        # no delay between requests
+        :delay => 0,
+        # don't obey the robots exclusion protocol
+        :obey_robots_txt => false,
+        # by default, don't limit the depth of the crawl
+        :depth_limit => false,
+        # number of times HTTP redirects will be followed
+        :redirect_limit => 5,
+        # storage engine defaults to Hash in +process_options+ if none specified
+        :storage => nil,
+        # Hash of cookie name => value to send with HTTP requests
+        :cookies => nil,
+        # accept cookies from the server and send them back?
+        :accept_cookies => false,
+        # skip any link with a query string? e.g. http://foo.com/?u=user
+        :skip_query_strings => false,
+        # respect canonical url from the header
+        :use_canonical_urls => false,
+        # Collection of domains to treat as synonyms for the primary domain
+        :domain_synonyms => []
     }
 
     # Create setter methods for all options to be called from the crawl block
@@ -201,8 +203,14 @@ module Anemone
       storage = Anemone::Storage::Base.new(@opts[:storage] || Anemone::Storage.Hash)
       @pages = PageStore.new(storage)
       @robots = Robots.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
+      @opts[:domain_synonyms] = ensure_array_of_uris(@opts[:domain_synonyms])
 
       freeze_options
+    end
+
+    def ensure_array_of_uris(uris)
+      uris = uris.to_a
+      uris.each_with_index { |u, i| uris[i] = URI(u) unless u.is_a? URI }
     end
 
     #
@@ -253,12 +261,11 @@ module Anemone
     # Returns +false+ otherwise.
     #
     def should_visit_link?(link, from_page = nil)
-      puts "Deciding whether to visit #{link.to_s}, @pages has it? #{@pages.has_page?(link)}"
       !@pages.has_page?(link) &&
-              !skip_link?(link) &&
-              !skip_query_string?(link) &&
-              allowed(link) &&
-              !too_deep?(from_page)
+          !skip_link?(link) &&
+          !skip_query_string?(link) &&
+          allowed(link) &&
+          !too_deep?(from_page)
     end
 
     #

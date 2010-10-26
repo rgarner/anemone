@@ -17,19 +17,20 @@ module Anemone
 
     def initialize(name = '', options = {})
       @name = name
-      @links = [options[:links]].flatten if options.has_key?(:links)
+      @links = [options[:links]].to_a.flatten if options.has_key?(:links)
       @hrefs = [options[:hrefs]].flatten if options.has_key?(:hrefs)
       @redirect = options[:redirect] if options.has_key?(:redirect)
       @content_type = options[:content_type] || "text/html"
       @body = options[:body]
       @canonical_url = options[:canonical_url]
+      @domain = options[:domain] || SPEC_DOMAIN
 
       create_body unless @body
       add_to_fakeweb
     end
 
     def url
-      SPEC_DOMAIN + @name
+      @domain + @name
     end
 
     private
@@ -38,8 +39,14 @@ module Anemone
       @body = "<html>"
       @body += "<head><link rel=\"canonical\" href=\"#{@canonical_url}\" /></head>" if @canonical_url
       @body += "<body>"
-      @links.each{|l| @body += "<a href=\"#{SPEC_DOMAIN}#{l}\"></a>"} if @links
-      @hrefs.each{|h| @body += "<a href=\"#{h}\"></a>"} if @hrefs
+
+      @links.each do |l|
+        @body += "<a href=\"#{@domain}#{l}\"></a>" if l.is_a? String
+        if l.is_a? Hash
+          l.each_pair { |name, domain| @body += "<a href=\"#{File.join(domain, name)}\"></a>" }
+        end
+      end if @links
+      @hrefs.each { |h| @body += "<a href=\"#{h}\"></a>" } if @hrefs
       @body += "</body></html>"
     end
 
@@ -50,7 +57,7 @@ module Anemone
         options[:status] = [301, "Permanently Moved"]
 
         # only prepend SPEC_DOMAIN if a relative url (without an http scheme) was specified
-        redirect_url = (@redirect =~ /http/) ? @redirect : SPEC_DOMAIN + @redirect
+        redirect_url = (@redirect =~ /http/) ? @redirect : @domain + @redirect
         options[:location] = redirect_url
 
         # register the page this one redirects to
@@ -59,7 +66,7 @@ module Anemone
                                                   :status => [200, "OK"]})
       end
 
-      FakeWeb.register_uri(:get, self.url, options)
+      FakeWeb.register_uri(:get, @domain + @name, options)
     end
   end
 end

@@ -57,12 +57,21 @@ module Anemone
       @http.fetch_pages(FakePage.new('redir', :redirect => 'home').url).first.redirect?.should == true
     end
 
-    it "should have a method to tell if a URI is in the same domain as the page" do
-      @page.should respond_to(:in_domain?)
+    describe "Same domain method" do
+      it "should have a method to tell if a URI is in the same domain as the page" do
+        @page.should respond_to(:in_domain?)
 
-      @page.in_domain?(URI(FakePage.new('test').url)).should == true
-      @page.in_domain?(URI('http://www.other.com/')).should == false
+        @page.in_domain?(URI(FakePage.new('test').url)).should == true
+        @page.in_domain?(URI('http://www.other.com/')).should == false
+      end
+
+      it "should be able to use domain synonyms" do
+        page = Page.new(URI('http://www.main.com'), {:domain_synonyms => [URI('http://other.main.com')]})
+        page.in_domain?(URI('http://other.main.com/1')).should be_true('Expected other.main.com to be classed as ' +
+                                                                               'the same domain as www.main.com')
+      end
     end
+
 
     it "should include the response time for the HTTP request" do
       @page.should respond_to(:response_time)
