@@ -10,9 +10,10 @@ module Anemone
     #
     # Create a new Tentacle
     #
-    def initialize(link_queue, page_queue, opts = {})
+    def initialize(link_queue, page_queue, pages, opts = {})
       @link_queue = link_queue
       @page_queue = page_queue
+      @pages = pages
       @http = Anemone::HTTP.new(opts)
       @opts = opts
     end
@@ -26,6 +27,8 @@ module Anemone
         link, referer, depth = @link_queue.deq
 
         break if link == :END
+
+        next if @pages.has_page? link
 
         @http.fetch_pages(link, referer, depth).each { |page| @page_queue << page }
 
