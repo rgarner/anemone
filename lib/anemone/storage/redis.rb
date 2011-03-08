@@ -7,6 +7,7 @@ module Anemone
       MARSHAL_FIELDS = %w(links visited fetched)
 
       def initialize(opts = {})
+        opts.merge!(:thread_safe => true)
         @redis = ::Redis.new(opts)
         @key_prefix = opts[:key_prefix] || 'anemone'
         @db_index = opts[:db_index] || REDIS_DB_INDEX
