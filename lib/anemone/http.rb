@@ -151,7 +151,8 @@ module Anemone
     # Allowed to connect to the requested url?
     #
     def allowed?(to_url, from_url)
-      to_url.host.nil? || (to_url.host == from_url.host)
+      to_url.host.nil? || (to_url.host == from_url.host) ||
+          (@opts[:domain_synonyms] && @opts[:domain_synonyms].include?(to_url.host))
     end
 
   end
