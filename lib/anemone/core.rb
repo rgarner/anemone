@@ -27,33 +27,35 @@ module Anemone
 
     DEFAULT_OPTS = {
         # run 4 Tentacle threads to fetch pages
-        :threads             => 4,
+        :threads => 4,
         # disable verbose output
-        :verbose             => false,
+        :verbose => false,
         # don't throw away the page response body after scanning it for links
         :discard_page_bodies => false,
         # identify self as Anemone/VERSION
-        :user_agent          => "Anemone/#{Anemone::VERSION}",
+        :user_agent => "Anemone/#{Anemone::VERSION}",
         # no delay between requests
-        :delay               => 0,
+        :delay => 0,
         # don't obey the robots exclusion protocol
-        :obey_robots_txt     => false,
+        :obey_robots_txt => false,
         # by default, don't limit the depth of the crawl
-        :depth_limit         => false,
+        :depth_limit => false,
         # number of times HTTP redirects will be followed
-        :redirect_limit      => 5,
+        :redirect_limit => 5,
         # storage engine defaults to Hash in +process_options+ if none specified
-        :storage             => nil,
+        :storage => nil,
         # Hash of cookie name => value to send with HTTP requests
-        :cookies             => nil,
+        :cookies => nil,
         # accept cookies from the server and send them back?
-        :accept_cookies      => false,
+        :accept_cookies => false,
         # skip any link with a query string? e.g. http://foo.com/?u=user
-        :skip_query_strings  => false,
+        :skip_query_strings => false,
         # respect canonical url from the header
-        :use_canonical_urls  => false,
+        :use_canonical_urls => false,
+        # When true, do not report redirects
+        :silence_redirects => false,
         # Collection of domains to treat as synonyms for the primary domain
-        :domain_synonyms     => []
+        :domain_synonyms => []
     }
 
     # Create setter methods for all options to be called from the crawl block
@@ -68,15 +70,15 @@ module Anemone
     # and optional *block*
     #
     def initialize(urls, opts = {})
-      @urls                 = [urls].flatten.map { |url| url.is_a?(URI) ? url : URI(url) }
+      @urls = [urls].flatten.map { |url| url.is_a?(URI) ? url : URI(url) }
       @urls.each { |url| url.path = '/' if url.path.empty? }
 
-      @tentacles            = []
+      @tentacles = []
       @on_every_page_blocks = []
       @on_pages_like_blocks = Hash.new { |hash, key| hash[key] = [] }
-      @skip_link_patterns   = []
-      @after_crawl_blocks   = []
-      @opts                 = opts
+      @skip_link_patterns = []
+      @after_crawl_blocks = []
+      @opts = opts
 
       yield self if block_given?
     end
@@ -159,8 +161,8 @@ module Anemone
       @urls.each { |url| link_queue.enq(url) }
 
       loop do
-        page         = page_queue.deq
-        key          = @opts[:use_canonical_urls] ? page.key : page.url
+        page = page_queue.deq
+        key = @opts[:use_canonical_urls] ? page.key : page.url
 
         already_seen = @pages.has_page? key
 
@@ -169,9 +171,9 @@ module Anemone
         unless @opts[:use_canonical_urls] && already_seen
           do_page_blocks page
 
-          links       = links_to_follow page
+          links = links_to_follow page
           page.discard_doc! if @opts[:discard_page_bodies]
-          links.reject {|l| @pages.has_page? l}.each do |link|
+          links.reject { |l| @pages.has_page? l }.each do |link|
             link_queue << [link, page.url.dup, page.depth + 1]
           end
 
@@ -198,10 +200,10 @@ module Anemone
     private
 
     def process_options
-      @opts                   = DEFAULT_OPTS.merge @opts
+      @opts = DEFAULT_OPTS.merge @opts
       @opts[:threads] = 1 if @opts[:delay] > 0
-      storage                 = Anemone::Storage::Base.new(@opts[:storage] || Anemone::Storage.Hash)
-      @pages                  = PageStore.new(storage)
+      storage = Anemone::Storage::Base.new(@opts[:storage] || Anemone::Storage.Hash)
+      @pages = PageStore.new(storage)
       @robots = Robots.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
       @opts[:domain_synonyms] = ensure_array_of_uris(@opts[:domain_synonyms])
 

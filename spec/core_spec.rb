@@ -74,6 +74,15 @@ module Anemone
         Anemone.crawl(pages[0].url, @opts).should have(3).pages
       end
 
+      it "should follow http redirects but keep quiet about them when told to do so" do
+        pages = []
+        pages << FakePage.new('0', :links => ['1'])
+        pages << FakePage.new('1', :redirect => '2')
+        pages << FakePage.new('2')
+
+        Anemone.crawl(pages[0].url, @opts.merge(:silence_redirects => true)).should have(2).pages
+      end
+
       it "should accept multiple starting URLs" do
         pages = []
         pages << FakePage.new('0', :links => ['1'])

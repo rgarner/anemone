@@ -93,7 +93,8 @@ module Anemone
           response, response_time = get_response(loc, referer)
           code = Integer(response.code)
           redirect_to = response.is_a?(Net::HTTPRedirection) ?  URI(response['location']).normalize : nil
-          yield response, code, loc, redirect_to, response_time
+          yield response, code, loc, redirect_to, response_time unless
+              response.is_a?(Net::HTTPRedirection) && @opts[:silence_redirects]
           limit -= 1
       end while (loc = redirect_to) && allowed?(redirect_to, url) && limit > 0
     end
