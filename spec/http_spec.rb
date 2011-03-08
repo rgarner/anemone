@@ -18,7 +18,9 @@ module Anemone
 
       describe "respecting domain synonyms on redirection" do
         before do
-          http = HTTP.new(:domain_synonyms => 'synonym.original.com')
+          # Domain synonyms are ordinarily coerced to an array of URIs by core.rb.
+          # This is a bad/brittle test as it has knowledge of this
+          http = HTTP.new(:domain_synonyms => [URI('http://synonym.original.com')])
           FakeWeb.register_uri(:get, ORIGINAL_URI, {:status => [301, "Moved Permanently"], :location => REDIRECTED_URI})
           FakeWeb.register_uri(:get, REDIRECTED_URI, {:status => 200, :body => 'success!'})
 

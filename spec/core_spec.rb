@@ -60,7 +60,8 @@ module Anemone
 
         core = Anemone.crawl(pages[0].url, @opts.merge(:domain_synonyms => ['http://other.example.com']))
 
-        core.should have(2).pages
+        core.pages.each {|x| puts x.inspect}
+        core.should have(3).pages # including the 301
         core.pages.keys.should include('http://other.example.com/1')
       end
 

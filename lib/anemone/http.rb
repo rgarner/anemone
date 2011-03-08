@@ -147,12 +147,15 @@ module Anemone
       @opts[:verbose]
     end
 
+    def synonymous?(to_url)
+      @opts[:domain_synonyms] && @opts[:domain_synonyms].any? { |synonym_url| synonym_url.host == to_url.host }
+    end
+
     #
     # Allowed to connect to the requested url?
     #
     def allowed?(to_url, from_url)
-      to_url.host.nil? || (to_url.host == from_url.host) ||
-          (@opts[:domain_synonyms] && @opts[:domain_synonyms].include?(to_url.host))
+      to_url.host.nil? || (to_url.host == from_url.host) || synonymous?(to_url)
     end
 
   end
